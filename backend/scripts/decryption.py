@@ -146,76 +146,43 @@
 #     )
 
 
-
-
-
-
-
-
-
-
-import cv2
 import numpy as np
-import os
+from PIL import Image
 
 # ---------- Logistic Map ----------
-def logistic_map(x, r, size):
+def logistic_map(x0, r, size):
     seq = np.zeros(size)
-    seq[0] = x
-    for i in range(1, size):
-        seq[i] = r * seq[i - 1] * (1 - seq[i - 1])
+    x = x0
+    for i in range(size):
+        x = r * x * (1 - x)
+        seq[i] = x
     return seq
 
 
-# ---------- Decryption Function ----------
+
 def decrypt_image_with_key(encrypted_image_path, output_path, x0, r):
     # Load encrypted image
-    img = cv2.imread(encrypted_image_path)
-    if img is None:
-        raise FileNotFoundError("❌ Encrypted image not found")
+    img = Image.open(encrypted_image_path).convert("RGB")
+    img = np.array(img)
 
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     h, w, c = img.shape
-
     flat_enc = img.reshape(-1, c)
     num_pixels = flat_enc.shape[0]
 
-    # Generate chaotic sequence from key
+    # Generate chaotic sequence
     chaotic_seq = logistic_map(x0, r, num_pixels)
 
-    # ---------- Reverse value diffusion ----------
-    chaotic_vals = np.floor(chaotic_seq * 256).astype(np.uint8)
-    chaotic_vals = np.repeat(chaotic_vals[:, np.newaxis], 3, axis=1)
+    # Reverse XOR diffusion
+    chaotic_vals = (chaotic_seq * 255).astype(np.uint8)
+    chaotic_vals = np.repeat(chaotic_vals[:, None], 3, axis=1)
+    value_recovered = flat_enc ^ chaotic_vals
 
-    value_recovered = np.bitwise_xor(flat_enc.astype(np.uint8), chaotic_vals)
+    # 🔑 LOAD SAVED SHUFFLE KEY (CRITICAL)
+    shuffle_key = np.load("data/encrypted/shuffle_key.npy")
+    inv_perm = np.argsort(shuffle_key)
 
-    # ---------- Reverse pixel permutation ----------
-    perm_index = np.argsort(chaotic_seq)
-    inv_perm = np.argsort(perm_index)
     original_pixels = value_recovered[inv_perm]
-
     decrypted_img = original_pixels.reshape(h, w, c)
 
-    # Save decrypted image
-    cv2.imwrite(output_path, cv2.cvtColor(decrypted_img, cv2.COLOR_RGB2BGR))
+    Image.fromarray(decrypted_img).save(output_path)
     print(f"✅ Decryption successful! Saved as: {output_path}")
-
-
-# ---------- USER INPUT ----------
-if __name__ == "__main__":
-
-    print("\n🔐 IMAGE DECRYPTION USING CHAOTIC KEY 🔐\n")
-
-    encrypted_image_path = input("Enter encrypted image path: ").strip()
-    output_path = input("Enter output (decrypted) image path: ").strip()
-
-    x0 = float(input("Enter secret key x0 (0 < x0 < 1): "))
-    r = float(input("Enter secret key r (3.57 < r < 4): "))
-
-    decrypt_image_with_key(
-        encrypted_image_path=encrypted_image_path,
-        output_path=output_path,
-        x0=x0,
-        r=r
-    )
-
