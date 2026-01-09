@@ -146,6 +146,51 @@
 #     )
 
 
+# import numpy as np
+# from PIL import Image
+
+# # ---------- Logistic Map ----------
+# def logistic_map(x0, r, size):
+#     seq = np.zeros(size)
+#     x = x0
+#     for i in range(size):
+#         x = r * x * (1 - x)
+#         seq[i] = x
+#     return seq
+
+
+
+# def decrypt_image_with_key(encrypted_image_path, output_path, x0, r):
+#     # Load encrypted image
+#     img = Image.open(encrypted_image_path).convert("RGB")
+#     img = np.array(img)
+
+#     h, w, c = img.shape
+#     flat_enc = img.reshape(-1, c)
+#     num_pixels = flat_enc.shape[0]
+
+#     # Generate chaotic sequence
+#     chaotic_seq = logistic_map(x0, r, num_pixels)
+
+#     # Reverse XOR diffusion
+#     chaotic_vals = (chaotic_seq * 255).astype(np.uint8)
+#     chaotic_vals = np.repeat(chaotic_vals[:, None], 3, axis=1)
+#     value_recovered = flat_enc ^ chaotic_vals
+
+#     # 🔑 LOAD SAVED SHUFFLE KEY (CRITICAL)
+#     shuffle_key = np.load("data/encrypted/shuffle_key.npy")
+#     inv_perm = np.argsort(shuffle_key)
+
+#     original_pixels = value_recovered[inv_perm]
+#     decrypted_img = original_pixels.reshape(h, w, c)
+
+#     Image.fromarray(decrypted_img).save(output_path)
+#     print(f"✅ Decryption successful! Saved as: {output_path}")
+
+
+
+
+
 import numpy as np
 from PIL import Image
 
@@ -159,30 +204,29 @@ def logistic_map(x0, r, size):
     return seq
 
 
+# ---------- Decryption ----------
+def decrypt_image(input_path, output_path, x0, r):
+    encrypted = Image.open(input_path).convert("RGB")
+    enc_array = np.array(encrypted)
+    h, w, c = enc_array.shape
 
-def decrypt_image_with_key(encrypted_image_path, output_path, x0, r):
-    # Load encrypted image
-    img = Image.open(encrypted_image_path).convert("RGB")
-    img = np.array(img)
+    num_pixels = h * w
 
-    h, w, c = img.shape
-    flat_enc = img.reshape(-1, c)
-    num_pixels = flat_enc.shape[0]
-
-    # Generate chaotic sequence
     chaotic_seq = logistic_map(x0, r, num_pixels)
 
-    # Reverse XOR diffusion
+    # ---------- STEP 1: Reverse XOR ----------
     chaotic_vals = (chaotic_seq * 255).astype(np.uint8)
-    chaotic_vals = np.repeat(chaotic_vals[:, None], 3, axis=1)
-    value_recovered = flat_enc ^ chaotic_vals
+    chaotic_vals = np.repeat(chaotic_vals[:, np.newaxis], 3, axis=1)
 
-    # 🔑 LOAD SAVED SHUFFLE KEY (CRITICAL)
-    shuffle_key = np.load("data/encrypted/shuffle_key.npy")
-    inv_perm = np.argsort(shuffle_key)
+    enc_flat = enc_array.reshape(num_pixels, c)
+    unxor_flat = enc_flat ^ chaotic_vals
 
-    original_pixels = value_recovered[inv_perm]
-    decrypted_img = original_pixels.reshape(h, w, c)
+    # ---------- STEP 2: Reverse permutation ----------
+    shuffle_indices = np.argsort(chaotic_seq)
+    inverse_perm = np.argsort(shuffle_indices)
 
-    Image.fromarray(decrypted_img).save(output_path)
-    print(f"✅ Decryption successful! Saved as: {output_path}")
+    original_flat = unxor_flat[inverse_perm]
+    original_img = original_flat.reshape(h, w, c)
+
+    Image.fromarray(original_img).save(output_path)
+    print("✅ Decryption completed")

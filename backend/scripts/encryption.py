@@ -115,10 +115,65 @@
 # encrypt_image("data/raw/misc/4.2.03.tiff", "encrypted_pixel2.png", x0=0.123456, r=3.99)
 
 
+# import numpy as np
+# from PIL import Image
+
+# # ---------- Logistic Map Function ----------
+# def logistic_map(x0, r, size):
+#     seq = np.zeros(size)
+#     x = x0
+#     for i in range(size):
+#         x = r * x * (1 - x)
+#         seq[i] = x
+#     return seq
+
+# # ---------- Encryption Function ----------
+# def encrypt_image(input_path, output_path, x0, r):
+#     # Load image
+#     image = Image.open(input_path).convert("RGB")
+#     img_array = np.array(image)
+#     shape = img_array.shape
+
+#     # Generate chaotic sequence
+#     num_pixels = shape[0] * shape[1]
+#     chaotic_seq = logistic_map(x0, r, num_pixels)
+
+#     # ---------- Step 1: Position-based permutation ----------
+#     shuffle_indices = np.argsort(chaotic_seq)
+#     flat_img = img_array.reshape(-1, shape[2])
+#     shuffled_flat = flat_img[shuffle_indices]
+
+#     # ---------- Step 2: Value-based XOR diffusion ----------
+#     # Scale chaotic sequence to [0, 255] and match RGB channels
+#     chaotic_vals = (chaotic_seq * 255).astype(np.uint8)
+#     chaotic_vals = np.repeat(chaotic_vals[:, np.newaxis], 3, axis=1)
+
+#     encrypted_flat = shuffled_flat ^ chaotic_vals
+#     encrypted_img = encrypted_flat.reshape(shape)
+
+#     # Save encrypted image
+#     Image.fromarray(encrypted_img).save(output_path)
+#     print(f"✅ Encryption complete! Saved as: {output_path}")
+
+#     # Save permutation indices for decryption
+#     np.save("data/encrypted/shuffle_key.npy", shuffle_indices)
+#     print("🔑 Shuffle key saved as 'shuffle_key.npy'")
+
+# # ---------- Example ----------
+# if __name__ == "__main__":
+#     encrypt_image(
+#         input_path="../data/raw/misc/4.2.03.tiff",
+#         output_path="encrypted_combined5.png",
+#         x0=0.123456,
+#         r=3.99
+#     )
+
+
+
+
 import numpy as np
 from PIL import Image
 
-# ---------- Logistic Map Function ----------
 def logistic_map(x0, r, size):
     seq = np.zeros(size)
     x = x0
@@ -127,43 +182,22 @@ def logistic_map(x0, r, size):
         seq[i] = x
     return seq
 
-# ---------- Encryption Function ----------
 def encrypt_image(input_path, output_path, x0, r):
-    # Load image
     image = Image.open(input_path).convert("RGB")
     img_array = np.array(image)
-    shape = img_array.shape
+    h, w, c = img_array.shape
 
-    # Generate chaotic sequence
-    num_pixels = shape[0] * shape[1]
+    num_pixels = h * w
     chaotic_seq = logistic_map(x0, r, num_pixels)
 
-    # ---------- Step 1: Position-based permutation ----------
     shuffle_indices = np.argsort(chaotic_seq)
-    flat_img = img_array.reshape(-1, shape[2])
+    flat_img = img_array.reshape(num_pixels, c)
     shuffled_flat = flat_img[shuffle_indices]
 
-    # ---------- Step 2: Value-based XOR diffusion ----------
-    # Scale chaotic sequence to [0, 255] and match RGB channels
     chaotic_vals = (chaotic_seq * 255).astype(np.uint8)
     chaotic_vals = np.repeat(chaotic_vals[:, np.newaxis], 3, axis=1)
 
     encrypted_flat = shuffled_flat ^ chaotic_vals
-    encrypted_img = encrypted_flat.reshape(shape)
+    encrypted_img = encrypted_flat.reshape(h, w, c)
 
-    # Save encrypted image
     Image.fromarray(encrypted_img).save(output_path)
-    print(f"✅ Encryption complete! Saved as: {output_path}")
-
-    # Save permutation indices for decryption
-    np.save("data/encrypted/shuffle_key.npy", shuffle_indices)
-    print("🔑 Shuffle key saved as 'shuffle_key.npy'")
-
-# ---------- Example ----------
-if __name__ == "__main__":
-    encrypt_image(
-        input_path="../data/raw/misc/4.2.03.tiff",
-        output_path="encrypted_combined5.png",
-        x0=0.123456,
-        r=3.99
-    )

@@ -1,6 +1,9 @@
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 import os
+import hashlib
+import uuid
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)
@@ -13,62 +16,119 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(ENCRYPT_DIR, exist_ok=True)
 os.makedirs(DECRYPT_DIR, exist_ok=True)
 
-# 🔐 Chaotic encryption keys (SECRET)
-X0 = 0.123456
-R = 3.99
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg","tiff"}
 
 
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+# 🔐 Password → x0, r
+def password_to_chaos(password):
+    hash_hex = hashlib.sha256(password.encode()).hexdigest()
+
+    x0 = int(hash_hex[:16], 16) / (16 ** 16)              # (0,1)
+    r = 3.9 + (int(hash_hex[16:32], 16) / (16 ** 16)) * 0.1  # (3.9–4.0)
+
+    return x0, r
+
+
+# 🔐 ENCRYPT
 @app.route("/api/encrypt", methods=["POST"])
 def encrypt():
-    file = request.files.get("image")
-    if not file:
-        return jsonify({"error": "No image uploaded"}), 400
-
-    input_path = os.path.join(UPLOAD_DIR, "input.png")
-    output_path = os.path.join(ENCRYPT_DIR, "encrypted.png")
-
-    file.save(input_path)
-    print("✅ Input image saved")
-
-    from scripts.encryption import encrypt_image
-    encrypt_image(input_path, output_path, X0, R)
-
-    print("🔐 Encrypted image saved at:", output_path)
-
-    return send_file(output_path, mimetype="image/png")
-
-
-@app.route("/api/decrypt", methods=["POST"])
-def decrypt():
     try:
-        print("📥 Encrypted image received for decryption")
-
         file = request.files.get("image")
-        if not file:
-            return jsonify({"error": "No image uploaded"}), 400
+        password = request.form.get("password")
 
-        input_path = os.path.join(ENCRYPT_DIR, "encrypted.png")
-        output_path = os.path.join(DECRYPT_DIR, "decrypted.png")
+        if not file or not password:
+            return jsonify({"error": "Image and password required"}), 400
 
+        # Ensure directories exist
+        UPLOAD_DIR = "uploads"
+        ENCRYPT_DIR = "encrypted"
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        os.makedirs(ENCRYPT_DIR, exist_ok=True)
+
+        # Secure input filename
+        original_filename = secure_filename(file.filename)
+        input_path = os.path.join(UPLOAD_DIR, original_filename)
+
+        # 🔹 Use unique temp name to avoid overwrite
+        temp_name = f"encrypted_{uuid.uuid4().hex}.png"
+        output_path = os.path.join(ENCRYPT_DIR, temp_name)
+
+        # Save uploaded image
         file.save(input_path)
-        print("📁 Saved encrypted image at:", input_path)
 
-        from scripts.decryption import decrypt_image_with_key
+        # Generate chaotic key
+        x0, r = password_to_chaos(password)
 
-        # MUST MATCH ENCRYPTION
-        x0 = 0.123456
-        r = 3.99
+        # Encrypt
+        from scripts.encryption import encrypt_image
+        encrypt_image(input_path, output_path, x0, r)
 
-        decrypt_image_with_key(input_path, output_path, x0, r)
-
-        print("✅ Decryption completed, sending file")
-        return send_file(output_path, mimetype="image/png")
-
+        # 🔥 Send encrypted image to frontend (NO auto-save)
+        return send_file(
+            output_path,
+            mimetype="image/png",
+            as_attachment=False
+        )
     except Exception as e:
-        print("❌ DECRYPTION ERROR:", e)
+        print("❌ ENCRYPT ERROR:", e)
         return jsonify({"error": str(e)}), 500
 
 
+# 🔓 DECRYPT
+@app.route("/api/decrypt", methods=["POST"])
+def decrypt():
+    try:
+        file = request.files.get("image")
+        password = request.form.get("password")
+
+        if not file or not password:
+            return jsonify({"error": "Encrypted image and password required"}), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({"error": "Invalid image format"}), 400
+
+        # Ensure directories exist
+        ENCRYPT_DIR = "encrypted"
+        DECRYPT_DIR = "decrypted"
+        os.makedirs(ENCRYPT_DIR, exist_ok=True)
+        os.makedirs(DECRYPT_DIR, exist_ok=True)
+
+        uid = uuid.uuid4().hex
+
+        # Secure temp paths
+        encrypted_name = f"{uid}_encrypted.png"
+        decrypted_name = f"{uid}_decrypted.png"
+
+        input_path = os.path.join(ENCRYPT_DIR, encrypted_name)
+        output_path = os.path.join(DECRYPT_DIR, decrypted_name)
+
+        # Save uploaded encrypted image
+        file.save(input_path)
+        print("📁 Encrypted image saved temporarily")
+
+        # Generate chaotic key from password
+        x0, r = password_to_chaos(password)
+
+        # Perform decryption
+        from scripts.decryption import decrypt_image
+        decrypt_image(input_path, output_path, x0, r)
+
+        print("✅ Decryption completed")
+
+        # 🔥 Return decrypted image (NO auto-download)
+        return send_file(
+            output_path,
+            mimetype="image/png",
+            as_attachment=False
+        )
+
+    except Exception as e:
+        print("❌ ERROR:", e)
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=True)
