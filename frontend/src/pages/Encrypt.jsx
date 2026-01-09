@@ -9,7 +9,7 @@ export default function Encrypt() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // cleanup URLs
+  // Clean up object URLs
   useEffect(() => {
     return () => {
       if (original) URL.revokeObjectURL(original);
@@ -19,7 +19,7 @@ export default function Encrypt() {
 
   const handleEncrypt = async () => {
     if (!file) return alert("Upload an image first");
-    if (!password) return alert("Enter password");
+    if (!password) return alert("Enter encryption password");
 
     setLoading(true);
 
@@ -33,17 +33,19 @@ export default function Encrypt() {
         body: formData,
       });
 
+      if (!res.ok) throw new Error("Encryption failed");
+
       const blob = await res.blob();
       setEncryptedBlob(blob);
       setEncrypted(URL.createObjectURL(blob));
-    } catch {
+    } catch (err) {
       alert("Encryption failed");
     } finally {
       setLoading(false);
     }
   };
 
-  // 💾 SAVE BUTTON (Folder dialog)
+  // 💾 Save encrypted image
   const handleSave = async () => {
     if (!encryptedBlob) return;
 
@@ -57,7 +59,7 @@ export default function Encrypt() {
         suggestedName: "encrypted_image.png",
         types: [
           {
-            description: "Image Files",
+            description: "PNG Image",
             accept: { "image/png": [".png"] },
           },
         ],
@@ -72,66 +74,113 @@ export default function Encrypt() {
   };
 
   return (
-    <div className="pt-24 px-6 max-w-5xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6">Image Encryption</h2>
+  <div className="pt-24 px-6 max-w-6xl mx-auto">
+    <h2 className="text-2xl font-bold mb-6">Image Encryption</h2>
 
-      <ImageUpload
-        onFileSelect={(f) => {
-          setFile(f);
-          setOriginal(URL.createObjectURL(f)); // 🔥 THIS MAKES PNG SHOW
-          setEncrypted(null);
-          setEncryptedBlob(null);
-        }}
-      />
+    <ImageUpload
+      onFileSelect={(f) => {
+        setFile(f);
+        setOriginal(URL.createObjectURL(f));
+        setEncrypted(null);
+        setEncryptedBlob(null);
+      }}
+    />
 
-      <input
-        type="password"
-        placeholder="Enter encryption password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="mt-4 w-full md:w-1/2 px-4 py-2 rounded-lg bg-card border"
-      />
+    <input
+      type="password"
+      placeholder="Enter encryption password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      className="mt-4 w-full md:w-1/2 px-4 py-2 rounded-lg bg-card border border-gray-600"
+    />
 
-      <button
-        onClick={handleEncrypt}
-        disabled={loading}
-        className="mt-6 px-5 py-2 bg-gradient-to-r from-primary to-secondary rounded-lg"
-      >
-        {loading ? "Encrypting..." : "Encrypt Image"}
-      </button>
+    <button
+      onClick={handleEncrypt}
+      disabled={loading}
+      className="mt-6 px-5 py-2 bg-gradient-to-r from-primary to-secondary rounded-lg disabled:opacity-60"
+    >
+      {loading ? "Encrypting..." : "Encrypt Image"}
+    </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        {/* ORIGINAL */}
-        <div className="bg-card p-4 rounded-xl">
-          <p className="font-semibold mb-2">Original Image</p>
+    {/* SIDE BY SIDE USING FLEX */}
+    <div
+      style={{
+        display: "flex",
+        gap: "24px",
+        marginTop: "40px",
+      }}
+    >
+      {/* ORIGINAL IMAGE */}
+      <div style={{ flex: 1 }} className="bg-card p-4 rounded-xl">
+        <h3 className="text-lg font-semibold mb-3">Original Image</h3>
+
+        <div
+          style={{
+            height: "350px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.2)",
+            borderRadius: "12px",
+          }}
+        >
           {original ? (
-            <img src={original} className="rounded-lg" />
+            <img
+              src={original}
+              alt="Original"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain",
+              }}
+            />
           ) : (
             <p className="text-gray-400">No image selected</p>
           )}
         </div>
+      </div>
 
-        {/* ENCRYPTED */}
-        <div className="bg-card p-4 rounded-xl">
-          <p className="font-semibold mb-2">Encrypted Image</p>
+      {/* ENCRYPTED IMAGE */}
+      <div style={{ flex: 1 }} className="bg-card p-4 rounded-xl">
+        <h3 className="text-lg font-semibold mb-3">Encrypted Image</h3>
 
+        <div
+          style={{
+            height: "350px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.2)",
+            borderRadius: "12px",
+          }}
+        >
           {encrypted ? (
-            <>
-              <img src={encrypted} className="rounded-lg" />
-
-              {/* 💾 SAVE BUTTON */}
-              <button
-                onClick={handleSave}
-                className="mt-4 px-5 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-semibold"
-              >
-                Save Encrypted Image
-              </button>
-            </>
+            <img
+              src={encrypted}
+              alt="Encrypted"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain",
+              }}
+            />
           ) : (
             <p className="text-gray-400">Not encrypted yet</p>
           )}
         </div>
+
+        {encrypted && (
+          <button
+            onClick={handleSave}
+            style={{ marginTop: "16px" }}
+            className="px-5 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-semibold"
+          >
+            Save Encrypted Image
+          </button>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
+
 }

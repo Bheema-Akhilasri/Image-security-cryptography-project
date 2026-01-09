@@ -3,7 +3,7 @@ import ImageUpload from "../components/ImageUpload";
 
 export default function Decrypt() {
   const [file, setFile] = useState(null);
-  const [encrypted, setEncrypted] = useState(null);
+  const [encryptedPreview, setEncryptedPreview] = useState(null);
   const [decrypted, setDecrypted] = useState(null);
   const [decryptedBlob, setDecryptedBlob] = useState(null);
   const [password, setPassword] = useState("");
@@ -25,10 +25,7 @@ export default function Decrypt() {
         body: formData,
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Decryption failed");
-      }
+      if (!res.ok) throw new Error("Decryption failed");
 
       const blob = await res.blob();
       setDecryptedBlob(blob);
@@ -40,7 +37,6 @@ export default function Decrypt() {
     }
   };
 
-  // 🔥 Save with folder picker
   const handleSave = async () => {
     if (!decryptedBlob) return;
 
@@ -75,7 +71,7 @@ export default function Decrypt() {
       <ImageUpload
         onFileSelect={(f) => {
           setFile(f);
-          setEncrypted(URL.createObjectURL(f));
+          setEncryptedPreview(URL.createObjectURL(f));
           setDecrypted(null);
           setDecryptedBlob(null);
         }}
@@ -92,25 +88,70 @@ export default function Decrypt() {
       <button
         onClick={handleDecrypt}
         disabled={loading}
-        className="mt-6 px-5 py-2 bg-gradient-to-r from-primary to-secondary rounded-lg"
+        className="mt-6 px-5 py-2 bg-gradient-to-r from-primary to-secondary rounded-lg disabled:opacity-60"
       >
         {loading ? "Decrypting..." : "Decrypt Image"}
       </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <div className="bg-card p-4 rounded-xl">
-          <p className="mb-2 font-semibold">Encrypted Image</p>
-          {encrypted && <img src={encrypted} className="rounded-lg" />}
+      {/* SIDE BY SIDE */}
+      <div style={{ display: "flex", gap: "24px", marginTop: "40px" }}>
+        
+        {/* ENCRYPTED */}
+        <div style={{ flex: 1 }} className="bg-card p-4 rounded-xl">
+          <h3 className="text-lg font-semibold mb-3">Encrypted Image</h3>
+
+          <div
+            style={{
+              height: "350px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(0,0,0,0.2)",
+              borderRadius: "12px",
+            }}
+          >
+            {encryptedPreview ? (
+              <img
+                src={encryptedPreview}
+                alt="Encrypted"
+                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+              />
+            ) : (
+              <p className="text-gray-400">No image selected</p>
+            )}
+          </div>
         </div>
 
-        <div className="bg-card p-4 rounded-xl">
-          <p className="mb-2 font-semibold">Decrypted Image</p>
-          {decrypted && <img src={decrypted} className="rounded-lg" />}
+        {/* DECRYPTED */}
+        <div style={{ flex: 1 }} className="bg-card p-4 rounded-xl">
+          <h3 className="text-lg font-semibold mb-3">Decrypted Image</h3>
+
+          <div
+            style={{
+              height: "350px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(0,0,0,0.2)",
+              borderRadius: "12px",
+            }}
+          >
+            {decrypted ? (
+              <img
+                src={decrypted}
+                alt="Decrypted"
+                style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+              />
+            ) : (
+              <p className="text-gray-400">Not decrypted yet</p>
+            )}
+          </div>
 
           {decrypted && (
             <button
               onClick={handleSave}
-              className="mt-4 px-5 py-2 bg-green-500 rounded-lg font-semibold"
+              style={{ marginTop: "16px" }}
+              className="px-5 py-2 bg-green-500 hover:bg-green-600 rounded-lg font-semibold"
             >
               Save Decrypted Image
             </button>
