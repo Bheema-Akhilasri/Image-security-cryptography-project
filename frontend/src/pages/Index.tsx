@@ -34,11 +34,13 @@ const Index = () => {
   return (
     <Layout>
       {/* Hero Section */}
-      <section className="hero-gradient py-20 lg:py-28">
-        <div className="section-container">
+      <section className="w-full hero-gradient py-20 lg:py-28">
+  
+        {/* centered content */}
+        <div className="max-w-7xl mx-auto px-4">
           <div className="text-center space-y-6 max-w-4xl mx-auto">
             {/* Project Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary-foreground/10 rounded-full border border-primary-foreground/20 fade-in">
+            <div className="inline-flex items-center gap-2 px-4 py-2 h-14 bg-primary-foreground/10 rounded-full border border-primary-foreground/20 fade-in">
               <Cpu className="w-4 h-4 text-primary-foreground" />
               <span className="text-sm font-medium text-primary-foreground">
                 Securing data in the digital age
@@ -114,7 +116,7 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 items-center">
             {/* Step 1 */}
             <div className="text-center space-y-4">
               <div className="w-16 h-16 mx-auto rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-display font-bold">
@@ -142,18 +144,13 @@ const Index = () => {
                 Apply Encryption
               </h3>
               <p className="text-muted-foreground">
-                Our deep learning model processes and encrypts your image with advanced algorithms.
+                Our deep learning model encrypts your image using advanced algorithms.
               </p>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-            {/* Empty space for alignment */}
-            <div className="hidden md:block" />
-            
             {/* Arrow */}
             <div className="hidden md:flex items-center justify-center">
-              <ArrowRight className="w-8 h-8 text-primary rotate-90 md:rotate-0" />
+              <ArrowRight className="w-8 h-8 text-primary" />
             </div>
 
             {/* Step 3 */}
@@ -165,7 +162,25 @@ const Index = () => {
                 Secure Transmission
               </h3>
               <p className="text-muted-foreground">
-                Download and share the encrypted image. Only authorized users can decrypt it.
+                Send or store the encrypted image safely across networks.
+              </p>
+            </div>
+
+            {/* Arrow */}
+            <div className="hidden md:flex items-center justify-center">
+              <ArrowRight className="w-8 h-8 text-primary" />
+            </div>
+
+            {/* Step 4 */}
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-full bg-primary text-primary-foreground flex items-center justify-center text-2xl font-display font-bold">
+                4
+              </div>
+              <h3 className="font-display font-semibold text-xl text-foreground">
+                Decrypt Image
+              </h3>
+              <p className="text-muted-foreground">
+                Authorized users can decrypt the image using the correct secret key.
               </p>
             </div>
           </div>

@@ -437,23 +437,31 @@ def encrypt():
             return jsonify({"error": "Invalid image format"}), 400
 
         input_path = os.path.join(UPLOAD_DIR, secure_filename(file.filename))
-        output_path = os.path.join(ENCRYPT_DIR, f"enc_{uuid.uuid4().hex}.png")
+        output_path = os.path.join(
+            ENCRYPT_DIR, f"encrypted_{uuid.uuid4().hex}.png"
+        )
 
         file.save(input_path)
 
-        # 🔑 DL Key
+        # 🔐 STEP 1: SHA-256
+        hash_bytes = hashlib.sha256(password.encode()).digest()
+        vector = np.frombuffer(hash_bytes, dtype=np.uint8)[:16]
+
+        # 🔐 STEP 2: Normalize
+        normalized = vector / 255.0
+
+        # 🔐 STEP 3: DL Model Key
         with torch.no_grad():
-            inp = password_to_vector(password)
+            inp = torch.tensor(normalized, dtype=torch.float32)
             key = model(inp).numpy()
             key = (key * 255).astype(np.uint8)
 
-        # 🔥 Full key usage
+        # 🔐 STEP 4: Chaos Parameters (Improved)
         chaotic_seed = np.sum(key) / (255 * len(key))
         x0 = chaotic_seed % 1.0
         r = 3.57 + (chaotic_seed % 0.43)
 
         from scripts.encryption import encrypt_image
-
         encrypt_image(input_path, output_path, x0, r)
 
         # -------------------------------
@@ -465,25 +473,17 @@ def encrypt():
         entropy = calculate_entropy(gray)
         corr_h, corr_v, corr_d = calculate_correlation(gray)
 
-        print("\n=== METRICS ===")
-        print("Entropy:", entropy)
-        print("Corr H:", corr_h)
-        print("Corr V:", corr_v)
-        print("Corr D:", corr_d)
-
         # -------------------------------
         # 🔥 NPCR & UACI (ONLY ONCE)
         # -------------------------------
+        npcr_val, uaci_val = None, None
+
         if not NPCR_DONE:
             original = cv2.imread(input_path, 0)
-
             modified = original.copy()
 
             # Safe pixel change
-            if modified[0, 0] == 255:
-                modified[0, 0] = 0
-            else:
-                modified[0, 0] += 1
+            modified[0, 0] = 0 if modified[0, 0] == 255 else modified[0, 0] + 1
 
             temp_path = input_path + "_temp.png"
             cv2.imwrite(temp_path, modified)
@@ -494,22 +494,18 @@ def encrypt():
             enc1 = gray
             enc2 = cv2.imread(enc2_path, 0)
 
-            npcr, uaci = npcr_uaci(enc1, enc2)
-
-            print("\n=== NPCR/UACI (ONE-TIME) ===")
-            print("NPCR:", npcr)
-            print("UACI:", uaci)
+            npcr_val, uaci_val = npcr_uaci(enc1, enc2)
 
             # Save results
             result_file = os.path.join(RESULT_DIR, "npcr_uaci.txt")
             with open(result_file, "w") as f:
-                f.write(f"NPCR: {npcr}\n")
-                f.write(f"UACI: {uaci}\n")
+                f.write(f"NPCR: {npcr_val}\n")
+                f.write(f"UACI: {uaci_val}\n")
 
-            NPCR_DONE = True  # 🔥 Prevent future runs
+            NPCR_DONE = True
 
         # -------------------------------
-        # 📊 Histogram (saved)
+        # 📊 Histogram
         # -------------------------------
         hist_path = os.path.join(RESULT_DIR, "histogram.png")
 
@@ -519,10 +515,38 @@ def encrypt():
         plt.savefig(hist_path)
         plt.close()
 
-        return send_file(output_path, mimetype="image/png")
+        # -------------------------------
+        # 🔍 Debug Data (for explanation)
+        # -------------------------------
+        debug_data = {
+            "hash_sample": [int(x) for x in vector[:5]],
+            "normalized_sample": [float(round(x, 3)) for x in normalized[:5]],
+            "key_sample": [int(x) for x in key[:5]],
+            "x0": float(round(x0, 5)),
+            "r": float(round(r, 5)),
+            "entropy": float(round(entropy, 4)),
+            "correlation": {
+                "horizontal": float(round(corr_h, 4)),
+                "vertical": float(round(corr_v, 4)),
+                "diagonal": float(round(corr_d, 4))
+            },
+            "npcr": npcr_val,
+            "uaci": uaci_val
+        }
+
+        return jsonify({
+            "image_url": f"/api/get-image/{os.path.basename(output_path)}",
+            "debug": debug_data
+        })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/get-image/<filename>")
+def get_image(filename):
+    path = os.path.join(ENCRYPT_DIR, filename)
+    return send_file(path, mimetype="image/png")
 # -------------------------------
 # 📌 DECRYPT API
 # -------------------------------

@@ -12,7 +12,7 @@ interface PageHeaderProps {
  */
 const PageHeader = ({ title, subtitle, children }: PageHeaderProps) => {
   return (
-    <div className="hero-gradient py-12 sm:py-16">
+    <div className="hero-gradient py-8 sm:py-10">
       <div className="section-container">
         <div className="text-center space-y-4">
           <h1 className="font-display font-bold text-3xl sm:text-4xl lg:text-5xl text-primary-foreground fade-in">
