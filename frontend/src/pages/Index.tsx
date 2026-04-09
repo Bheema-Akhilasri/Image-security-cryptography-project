@@ -195,40 +195,40 @@ const Index = () => {
             {/* Key Space */}
             <div className="text-center">
               <p className="font-display font-bold text-4xl text-primary mb-2">
-                ~2<sup>256</sup>
+                ~7.63
               </p>
               <p className="text-sm text-muted-foreground">
-                Key Space Size
+                Entropy
               </p>
             </div>
 
             {/* Decryption Accuracy */}
             <div className="text-center">
               <p className="font-display font-bold text-4xl text-primary mb-2">
-                ≈100%
+                ~0.0008
               </p>
               <p className="text-sm text-muted-foreground">
-                Decryption Accuracy
+                Correlation
               </p>
             </div>
 
             {/* Processing Time */}
             <div className="text-center">
               <p className="font-display font-bold text-4xl text-primary mb-2">
-                &lt; 1s
+                ~99.6%
               </p>
               <p className="text-sm text-muted-foreground">
-                Processing Time
+                NPCR(Number of Pixels Change Rate)
               </p>
             </div>
 
             {/* Data Integrity */}
             <div className="text-center">
               <p className="font-display font-bold text-4xl text-primary mb-2">
-                100%
+                ~32%
               </p>
               <p className="text-sm text-muted-foreground">
-                Data Integrity
+                UACI(Unified Average Changing Intensity)
               </p>
             </div>
 
